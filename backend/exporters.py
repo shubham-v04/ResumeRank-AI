@@ -37,7 +37,8 @@ def generate_excel(results: list[dict]) -> io.BytesIO:
     ws = wb.active
     ws.title = "Ranked Resumes"
 
-    headers = ["Rank", "Name", "Email", "Match Score (%)", "Skill Match", "Experience", "Filename"]
+    headers = ["Rank", "Name", "Email", "Match Score (%)", "Skill Match",
+               "Experience", "Education", "AI Summary", "Filename"]
     ws.append(headers)
 
     header_fill = PatternFill(start_color="1F7A5C", end_color="1F7A5C", fill_type="solid")
@@ -59,7 +60,9 @@ def generate_excel(results: list[dict]) -> io.BytesIO:
     for i, row in enumerate(results, start=1):
         ws.append([
             i, row["name"], row["email"], row["score"],
-            _skill_summary(row), _experience_summary(row), row["filename"],
+            _skill_summary(row), _experience_summary(row),
+            row.get("education") or "N/A", row.get("ai_summary") or "N/A",
+            row["filename"],
         ])
         excel_row = ws[i + 1]
         for cell in excel_row:
@@ -68,7 +71,7 @@ def generate_excel(results: list[dict]) -> io.BytesIO:
             if i % 2 == 0:
                 cell.fill = alt_fill
 
-    widths = [6, 22, 28, 16, 20, 20, 34]
+    widths = [6, 22, 28, 16, 20, 20, 28, 45, 30]
     for col_idx, width in enumerate(widths, start=1):
         ws.column_dimensions[chr(64 + col_idx)].width = width
 
@@ -94,9 +97,10 @@ def generate_pdf(results: list[dict]) -> io.BytesIO:
     pdf.cell(0, 10, "ResumeRank - Ranked Results", ln=True)
     pdf.ln(6)
 
-    # Column widths, sized so the filename fits without clipping
-    col_widths = [10, 32, 45, 20, 32, 28, 65]
-    headers = ["Rank", "Name", "Email", "Score", "Skill Match", "Experience", "Filename"]
+    # Filename is dropped here (still in the Excel export and the app's
+    # View button) to make room for Education without crowding the page.
+    col_widths = [10, 32, 48, 20, 32, 28, 55]
+    headers = ["Rank", "Name", "Email", "Score", "Skill Match", "Experience", "Education"]
 
     def draw_header_row():
         pdf.set_font("Helvetica", "B", 9)
@@ -113,29 +117,26 @@ def generate_pdf(results: list[dict]) -> io.BytesIO:
     pdf.set_draw_color(210, 210, 210)
 
     for i, row in enumerate(results, start=1):
-        # Alternate row shading
         if i % 2 == 0:
             pdf.set_fill_color(*ROW_ALT_RGB)
-            fill = True
         else:
             pdf.set_fill_color(255, 255, 255)
-            fill = True
+        fill = True
 
         pdf.set_text_color(30, 30, 30)
 
         values = [
             str(i), row["name"], row["email"], f"{row['score']}%",
-            _skill_summary(row), _experience_summary(row), row["filename"],
+            _skill_summary(row), _experience_summary(row),
+            row.get("education") or "N/A",
         ]
 
-        # Truncate only if a value still wouldn't fit even at this width
-        max_chars = [6, 20, 28, 8, 20, 18, 45]
+        max_chars = [6, 20, 30, 8, 20, 18, 38]
         for value, width, limit in zip(values, col_widths, max_chars):
             text = value if len(value) <= limit else value[: limit - 1] + "."
             pdf.cell(width, 8, text, border=1, fill=fill, align="L")
         pdf.ln()
 
-        # Re-draw header every ~25 rows so long lists stay readable across page breaks
         if i % 25 == 0 and i != len(results):
             pdf.add_page()
             draw_header_row()

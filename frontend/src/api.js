@@ -27,10 +27,18 @@ export async function analyzeResumes(jobDescription, files, skills = [], minExpe
   return data;
 }
 
-export function downloadExcelUrl() {
-  return `${API_BASE}/download/excel`;
+export async function getAnalysisProgress() {
+  const response = await fetch(`${API_BASE}/analyze/progress`);
+  if (!response.ok) return null;
+  return response.json();
 }
 
-export function downloadPdfUrl() {
-  return `${API_BASE}/download/pdf`;
+export function downloadExcelUrl(topN = "all") {
+  const query = topN === "all" ? "" : `?limit=${topN}`;
+  return `${API_BASE}/download/excel${query}`;
+}
+
+export function downloadPdfUrl(topN = "all") {
+  const query = topN === "all" ? "" : `?limit=${topN}`;
+  return `${API_BASE}/download/pdf${query}`;
 }

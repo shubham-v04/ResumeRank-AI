@@ -19,12 +19,19 @@ class Settings:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 
     # Which model to call, for whichever provider is active.
-    LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+    LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
 
     # API keys, one per provider. Only the one matching LLM_PROVIDER
     # actually needs to be set.
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+    # How many resumes to send to the LLM at once. Groq's free tier has
+    # a tight tokens-per-minute budget shared across ALL requests, so
+    # concurrency here trades speed for a much higher chance of hitting
+    # that limit. 1 (fully sequential) is the safe default; raise this
+    # only if you're on a paid tier with a higher TPM budget.
+    MAX_CONCURRENT_LLM_CALLS = int(os.getenv("MAX_CONCURRENT_LLM_CALLS", "1"))
 
 
 settings = Settings()

@@ -1,4 +1,4 @@
-# ResumeRank (AI-powered branch)
+# ResumeRank (AI-powered)
 
 A local tool for recruiters: paste a job description, upload multiple resumes
 (PDF or Word), and get a ranked, scored, downloadable shortlist.
