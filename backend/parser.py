@@ -1,7 +1,12 @@
 """
 Handles turning uploaded resume files into plain text, and pulling out
-a few basic fields (name, email, years of experience) so the results
-table and skill-matching logic have something structured to work with.
+structured fields (name, email, years of experience).
+
+Name/email extraction is delegated to llm_extractor.py (an LLM call,
+provider configured in .env) - it genuinely understands resume context
+instead of relying on regex patterns and hardcoded keyword lists. A
+simple email regex is kept as a fallback in case the LLM doesn't find
+one or the call fails for any reason.
 """
 
 import os
@@ -10,10 +15,9 @@ import re
 from pypdf import PdfReader
 from docx import Document
 
-EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
-NAME_PATTERN = re.compile(r"^\s*([A-Z][a-zA-Z'-]+)\s+([A-Z][a-zA-Z'-]+)", re.MULTILINE)
+from llm_extractor import extract_candidate_info
 
-# Matches things like "5 years", "3+ years", "2 yrs of experience"
+EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 EXPERIENCE_PATTERN = re.compile(r"(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", re.IGNORECASE)
 
 
@@ -44,12 +48,22 @@ def extract_text(path: str) -> str:
 
 
 def extract_entities(text: str):
-    """Very lightweight name/email extraction. Good enough for a v1 -
-    swap in spaCy NER later if this proves unreliable on real resumes."""
-    emails = EMAIL_PATTERN.findall(text)
-    name_match = NAME_PATTERN.search(text)
-    name = f"{name_match.group(1)} {name_match.group(2)}" if name_match else "Unknown"
-    email = emails[0] if emails else "Not found"
+    """
+    Returns (name, email). Name comes from the LLM extractor. Email
+    also comes from the LLM first, but falls back to a plain regex if
+    the LLM didn't find one or the call failed - an email address is
+    structured enough that regex alone is already reliable, so this
+    fallback costs nothing and adds robustness.
+    """
+    result = extract_candidate_info(text)
+
+    email = result.get("email")
+    if not email:
+        regex_emails = EMAIL_PATTERN.findall(text)
+        email = regex_emails[0] if regex_emails else "Not found"
+
+    name = result.get("name") or "Unknown"
+
     return name, email
 
 
@@ -62,7 +76,7 @@ def extract_years_of_experience(text: str):
     matches = EXPERIENCE_PATTERN.findall(text)
     if not matches:
         return None
-    years = [int(m) for m in matches if int(m) <= 50]  # ignore obvious junk matches
+    years = [int(m) for m in matches if int(m) <= 50]
     return max(years) if years else None
 
 

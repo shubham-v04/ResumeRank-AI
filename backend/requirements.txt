@@ -2,8 +2,11 @@ fastapi
 uvicorn[standard]
 python-multipart
 pypdf
+pdfplumber
 python-docx
 scikit-learn
 openpyxl
 fpdf2
 werkzeug
+groq
+python-dotenv
