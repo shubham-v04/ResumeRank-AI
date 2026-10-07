@@ -1,4 +1,8 @@
-const API_BASE = "http://localhost:8000";
+// Docker/production: empty string = same origin (nginx forwards API calls to the backend).
+// `npm run dev`: falls back to the local backend on port 8000.
+// Override anytime with VITE_API_BASE.
+export const API_BASE =
+  import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 export async function analyzeResumes(jobDescription, files, skills = [], minExperience = "") {
   const formData = new FormData();
